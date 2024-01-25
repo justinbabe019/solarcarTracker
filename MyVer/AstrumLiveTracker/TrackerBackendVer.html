@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Astrum Live Tracker</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" type="text/css">
+    <meta name="google-signin-client_id" content="866896161838-06ntn1butf2aanvto43332mc81ojhvs6.apps.googleusercontent.com">
+    <script src="https://apis.google.com/js/api:client.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVZHQT42ioKRW42uMt3ECCNZVSNwsYbTw&callback=initMap&libraries=&v=weekly" defer></script>
+    <!--<script src="https://apis.google.com/js/platform.js" async defer></script>-->
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 800px;
+      }
+
+      /* Optional: Makes the sample page fill the window. */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+
+     <style type="text/css">
+      #customBtn {
+        display: inline-block;
+        background: white;
+        color: #444;
+        width: 190px;
+        border-radius: 5px;
+        border: thin solid #888;
+        box-shadow: 1px 1px 1px grey;
+        white-space: nowrap;
+      }
+      #customBtn:hover {
+        cursor: pointer;
+      }
+      span.label {
+        font-family: serif;
+        font-weight: normal;
+      }
+      span.icon {
+        background: url('/identity/sign-in/g-normal.png') transparent 5px 50% no-repeat;
+        display: inline-block;
+        vertical-align: middle;
+        width: 42px;
+        height: 42px;
+      }
+      span.buttonText {
+        display: inline-block;
+        vertical-align: middle;
+        padding-left: 42px;
+        padding-right: 42px;
+        font-size: 14px;
+        font-weight: bold;
+        /* Use the Roboto font that is loaded in the <head> */
+        font-family: 'Roboto', sans-serif;
+      }
+    </style>
+
+   <script src="https://apis.google.com/js/api:client.js?onload=onLoadCallback" async defer></script>
+
+<script>
+var auth2;
+var googleUser = {};
+var auth3;
+
+window.onLoadCallback = function(){
+gapi.load('auth2', function () {
+auth2 = gapi.auth2.init({
+    client_id: '866896161838-06ntn1butf2aanvto43332mc81ojhvs6.apps.googleusercontent.com',
+    cookiepolicy: 'single_host_origin',
+    // Request scopes in addition to 'profile' and 'email'
+    //scope: 'profile email'
+  });
+
+auth3 = true;
+startApp();
+})
+
+}
+ startApp();
+
+</script>
+
+ <!--
+  <script>
+      var googleUser = {};
+      var auth2;
+      var auth3; 
+      var startApp = function() {
+         gapi.load('auth2', function(){
+            // Retrieve the singleton for the GoogleAuth library and set up the client.
+            auth2 = gapi.auth2.init({
+            client_id: '866896161838-06ntn1butf2aanvto43332mc81ojhvs6.apps.googleusercontent.com',
+            cookiepolicy: 'single_host_origin',
+            // Request scopes in addition to 'profile' and 'email'
+            //scope: 'additional_scope'
+            });
+            attachSignin(document.getElementById('customBtn'));
+         });
+      };
+
+      function attachSignin(element) {
+         auth2.attachClickHandler(element, {},
+            function(googleUser) {
+               alert("Hi" + googleUser);
+               document.getElementById('name').innerText = "Signed in: " +
+                  googleUser.getBasicProfile().getName();
+               show("updateLocation");
+               show("signOut");
+            }, function(error) {
+               alert("YEAH ITS ERROR");
+               alert(JSON.stringify(error, undefined, 2));
+            });
+      }
+   </script>
+--> 
+    <script>
+      "use strict";
+
+      let map;
+      let markers= [];
+      let traceMarkers=[];
+      let markerDates = [];
+      let infowindows=[];
+
+      const ausCenter = {lat: -25.363, lng: 131.044};
+      const astrumPos=ausCenter;//test
+
+      const startPos={lat: -12.4637, lng: 130.8444};
+      const katherinePos={lat: -14.4520, lng: 132.2699};
+      const dunmarraPos={lat: -16.679973, lng: 133.412624};
+      const tennantCreekPos={lat: -19.6495, lng: 134.1910};
+      const barrowCreekPos={lat: -21.3799, lng: 133.9756};
+      const aliceSpringsPos={lat: -23.6980, lng:133.8807};
+      const kulgeraPos={lat: -25.8436, lng: 133.2879};
+      const cooberPedyPos={lat: -29.0135, lng: 134.7544};
+      const glendamboPos={lat: -30.9677, lng: 135.7513};
+      const portAugustaPos={lat:-32.4936, lng: 137.7743};
+      const endPos={lat: -34.928497, lng: 138.600739};
+
+      gapi.load('auth2',function()
+      {
+         gapi.auth2.init();
+      });
+
+      function unifyInitIcon(URL){
+         const thing2={
+            url: URL,
+            scaledSize: new google.maps.Size(80, 42),
+            origin: new google.maps.Point(0, 0),
+            anchor: new google.maps.Point(40, 25),
+         }
+         return thing2;
+      }
+
+      function setInitMarkers(map){
+         /*
+         const astrumIcon="https://imgur.com/a/W7pXawQ", 
+            wscIcon="https://worldsolarchallenge.org/skin/2023/images/logo.svg", 
+            endPointIcon="https://static.vecteezy.com/system/resources/previews/009/342/320/original/racing-flag-clipart-design-illustration-free-png.png";
+         */
+         const startPointMarker = new google.maps.Marker({
+            position: startPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "startingPoint",
+            map,
+         })
+         markers.push(startPointMarker);
+         const katherineMarker = new google.maps.Marker({
+            position: katherinePos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "katherine",
+            map,
+         })
+         markers.push(katherineMarker);
+         const dunmarraMarker = new google.maps.Marker({
+            position: dunmarraPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "dunmarra",
+            map,
+         })
+         markers.push(dunmarraMarker);
+         const tennantCreekMarker = new google.maps.Marker({
+            position: tennantCreekPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "tennantCreek",
+            map,
+         })
+         markers.push(tennantCreekMarker);
+         const barrowCreekMarker = new google.maps.Marker({
+            position: barrowCreekPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "barrowCreekMarker",
+            map,
+         })
+         markers.push(barrowCreekMarker);
+         const aliceSpringMarker = new google.maps.Marker({
+            position: aliceSpringsPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "aliceSpring",
+            map,
+         })
+         markers.push(aliceSpringMarker);
+         const kulgeraMarker = new google.maps.Marker({
+            position: kulgeraPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "kulgera",
+            map,
+         })
+         markers.push(kulgeraMarker);
+         const cooberPedyMarker = new google.maps.Marker({
+            position: cooberPedyPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "cooberPedy",
+            map,
+         })
+         markers.push(cooberPedyMarker);
+         const glendamboMarker = new google.maps.Marker({
+            position: glendamboPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "cooberPedy",
+            map,
+         })
+         markers.push(glendamboMarker);
+         const portAugustaMarker = new google.maps.Marker({
+            position: portAugustaPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "portAugusta",
+            map,
+         })
+         markers.push(portAugustaMarker);
+         const endPointMarker = new google.maps.Marker({
+            position: endPos,
+            icon: unifyInitIcon("https://static.vecteezy.com/system/resources/previews/009/342/320/original/racing-flag-clipart-design-illustration-free-png.png"),
+            title: "endingPoint",
+            map,
+         })
+         markers.push(endPointMarker);
+
+         addTraceMarker(startPos, "Astrum Current Position");
+      }
+      function setInitInfoWindow(){
+         let contentString=["Darwin","Katherine", "Dunmarra", "Tennant Creek","Barrow Creek", "Alice Springs", "Kulgera", "Coober Pedy", "Glendambo", "Port Augusta", "Adelaide"];
+         for(let i =0; i<contentString.length;++i){
+            const infowondow= new google.maps.InfoWindow({
+               content: contentString[i]+document.getElementById("instagram-media-0").innerHTML,
+            });;
+            infowindows.push(infowondow);
+         }
+      }
+
+      function addTraceMarker(position, Label){
+         //const contentString=document.getElementsByTagName('div')[68].innerHTML;
+         const contentString=document.getElementById("instagram-media-0").innerHTML;
+         //const contentString=document.getElementsByClassName("instagram-media").innerHTML;
+        //'<a href="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_web_copy_link&igshid=MzRlODBiNWFlZA==">Check out our instagram!</a>';
+
+         const infowindow = new google.maps.InfoWindow({
+            content: contentString,
+            //ariaLabel: label,
+         });
+         const marker=new google.maps.Marker({
+            position: position,
+            label: Label,
+            map,
+         });
+         marker.addListener("click", () => {
+            infowindow.open({
+               anchor: marker,
+               map,
+            });
+         });
+         traceMarkers.push(marker);
+      }
+
+      function initMap() {
+         hide("ins");
+         hide("signOut");
+         map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 5,
+            center: ausCenter,
+            fullscreenControl: false,
+            zoomControl: true,
+            streetViewControl: false
+         });
+         setInitMarkers(map);        
+         setInitInfoWindow();
+
+         ///////BACKDOOR FUNC/////// 
+         map.addListener("click", (event) => {
+            addTraceMarker(event.latLng, getDateInString()+"-"+getTimeInString());
+         });
+         ///////TESTING FUNC///////
+
+         //match infowindows with markers
+         for(let i=0;i<markers.length;i++){
+            markers[i].addListener("click", () => {
+               infowindows[i].open({
+                  anchor: markers[i],
+                  map,
+               });
+            });
+         }
+         if (auth2.isSignedIn.get()) alert("signed In in initmap");
+      }
+      function hide(e){
+         document.getElementById(e).hidden=true;
+      }
+      function show(e){
+         document.getElementById(e).hidden=false;
+      }
+      function showTrace(array) {
+         for (let i = 0; i < array.length; i++) {
+            array[i].setMap(map);
+         }
+      }
+      function hideTrace() {
+         for(let i = 0; i<traceMarkers.length -1; ++i){
+            traceMarkers[i].setMap(null);
+         }
+      }
+      function hideInitMarker(){
+         for(let i = 0; i<markers.length; ++i){
+            markers[i].setMap(null);
+         }
+      }
+      function reCenter(){
+         map.setZoom(5);
+         map.setCenter(ausCenter);
+      }
+
+      function getDateInString(){
+         var today = new Date();
+         var date = (today.getMonth()+1)+'/'+today.getDate();
+         return date;
+      }   
+      function getTimeInString(){
+         var today = new Date(); 
+         var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+         return time;
+      }
+      function getAstrumPos(){
+         var astrumNewPos=$.csv.toObjects(location.csv);
+         return astrumNewPos;
+      }
+      function updateLocation(){
+         if(auth2.isSignedIn){
+            var today=new Date();
+            var min=today.getMinutes();
+            addTraceMarker(getAstrumPos(), getDateInString()+"-"+getTimeInString());
+         }
+         else{
+            alert("You are NOT authorised to update the location. JUST TAKE what is there now:) R U THE DUTCH");
+         }
+      }
+
+      function onSignIn(googleUser){
+         if (auth2.isSignedIn.get()) alert("signed In in onSignIn");
+         alert("On sign in!");
+         var profile = googleUser.getBasicProfile();
+         alert("U are signed in"+profile.getName());
+         $("#userName").text=profile.getName();
+         $(".g-signin2").hide();
+         show("userName");
+         show("updateLocation");
+         hide("g-signin2");
+         alert("done hiding n showing");
+         /*
+         console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
+         console.log('Name: ' + profile.getName());
+         console.log('Image URL: ' + profile.getImageUrl());
+         console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
+         */
+      }
+      function signOut(){
+         alert("Trying to sign out!");
+         var auth2 = gapi.auth2.getAuthInstance();
+         auth2.signOut().then(function () {
+            console.log('User signed out.');
+            $(".g-signin2").css("display", "block");
+            hide("signOut")
+            hide(".updateLocation");
+         });
+         alert("User signed out");
+      }
+      function distCal(){
+         //look up google map platform
+      }
+    </script>
+  </head>
+
+
+   <body>
+      <script src="https://apis.google.com/js/platform.js" async defer></script>
+      <div id="floating-panel">
+         <button onclick="hideTrace()">Hide Trace</button>
+         <button onclick="showTrace(traceMarkers)">Show Trace</button>
+         <button onclick="hideInitMarker()">Hide Checkpoints</button>
+         <button onclick="showTrace(markers)">Show Checkpoints</button>
+         <button onclick="reCenter()">Re-Center</button>
+         <button id="updateLocation" onclick="updateLocation()">Update Location</button>
+         <button onclick="distCal()">Dist Cal</button>
+         <button id="signOut" onclick="signOut()">Sign Out</button>
+         <div class="g-signin2" data-onsuccess="onSignIn"></div>
+         <!--
+            <div id="gSignInWrapper">
+            <span class="label">Sign in with:</span>
+            <div id="customBtn" class="customGPlusSignIn">
+              <span class="icon"></span>
+              <span class="buttonText">Google</span>
+            </div>
+          </div>
+         -->
+         <div id="name"></div>
+         <script>startApp();</script>
+      </div>
+      <div id="map"></div>
+      <div id="ins">
+         <blockquote id="instagram-media-0" class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"><div style="padding:16px;"> <a href="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_embed&amp;utm_campaign=loading" style=" background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> <div style=" display: flex; flex-direction: row; align-items: center;"> <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div></div></div><div style="padding: 19% 0;"></div> <div style="display:block; height:50px; margin:0 auto 12px; width:50px;"><svg width="50px" height="50px" viewBox="0 0 60 60" version="1.1" xmlns="https://www.w3.org/2000/svg" xmlns:xlink="https://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-511.000000, -20.000000)" fill="#000000"><g><path d="M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 549.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631"></path></g></g></g></svg></div><div style="padding-top: 8px;"> <div style=" color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">在 Instagram 查看這則貼文</div></div><div style="padding: 12.5% 0;"></div> <div style="display: flex; flex-direction: row; margin-bottom: 14px; align-items: center;"><div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(0px) translateY(7px);"></div> <div style="background-color: #F4F4F4; height: 12.5px; transform: rotate(-45deg) translateX(3px) translateY(1px); width: 12.5px; flex-grow: 0; margin-right: 14px; margin-left: 2px;"></div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(9px) translateY(-18px);"></div></div><div style="margin-left: 8px;"> <div style=" background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 20px; width: 20px;"></div> <div style=" width: 0; height: 0; border-top: 2px solid transparent; border-left: 6px solid #f4f4f4; border-bottom: 2px solid transparent; transform: translateX(16px) translateY(-4px) rotate(30deg)"></div></div><div style="margin-left: auto;"> <div style=" width: 0px; border-top: 8px solid #F4F4F4; border-right: 8px solid transparent; transform: translateY(16px);"></div> <div style=" background-color: #F4F4F4; flex-grow: 0; height: 12px; width: 16px; transform: translateY(-4px);"></div> <div style=" width: 0; height: 0; border-top: 8px solid #F4F4F4; border-left: 8px solid transparent; transform: translateY(-4px) translateX(8px);"></div></div></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center; margin-bottom: 24px;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 224px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 144px;"></div></div></a><p style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; line-height:17px; margin-bottom:0; margin-top:8px; overflow:hidden; padding:8px 0 7px; text-align:center; text-overflow:ellipsis; white-space:nowrap;"><a href="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;" target="_blank">University of Michigan Solar Car Team（@umsolarcarteam）分享的貼文</a></p></div></blockquote> <script async src="https://www.instagram.com/embed.js"></script>
+      </div>
+      <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+   </body>
+</html>

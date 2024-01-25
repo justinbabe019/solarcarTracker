@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Astrum Live Tracker</title>
+    <link rel="icon" type="image/x-icon" href="./assets/astrum-car-logo-blue.ico">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" type="text/css">
+    <!--<meta name="google-signin-client_id" content="866896161838-06ntn1butf2aanvto43332mc81ojhvs6.apps.googleusercontent.com">-->
+    <script src="https://apis.google.com/js/api:client.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVZHQT42ioKRW42uMt3ECCNZVSNwsYbTw&callback=initMap&libraries=&v=weekly" defer></script>
+    <!--<script src="https://apis.google.com/js/platform.js" async defer></script>-->
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" type="text/css">
+    <script src="https://apis.google.com/js/api:client.js"></script>
+    <!--<script src="./LiveTrackerScript.js"></script>-->
+  <!--<script>
+  var googleUser = {};
+  var startApp = function() {
+    gapi.load('auth2', function(){
+      // Retrieve the singleton for the GoogleAuth library and set up the client.
+      auth2 = gapi.auth2.init({
+        client_id: '866896161838-06ntn1butf2aanvto43332mc81ojhvs6.apps.googleusercontent.com',
+        cookiepolicy: 'single_host_origin',
+        // Request scopes in addition to 'profile' and 'email'
+        //scope: 'additional_scope'
+      });
+      attachSignin(document.getElementById('customBtn'));
+    });
+  };
+
+  function attachSignin(element) {
+    console.log(element.id);
+    auth2.attachClickHandler(element, {},
+        function(googleUser) {
+          document.getElementById('name').innerText = "Signed in: " +
+              googleUser.getBasicProfile().getName();
+        }, function(error) {
+          alert(JSON.stringify(error, undefined, 2));
+        });
+  }
+  </script>
+  <style type="text/css">
+    #customBtn {
+      display: inline-block;
+      background: white;
+      color: #444;
+      width: 190px;
+      border-radius: 5px;
+      border: thin solid #888;
+      box-shadow: 1px 1px 1px grey;
+      white-space: nowrap;
+    }
+    #customBtn:hover {
+      cursor: pointer;
+    }
+    span.label {
+      font-family: serif;
+      font-weight: normal;
+    }
+    span.icon {
+      background: url('/identity/sign-in/g-normal.png') transparent 5px 50% no-repeat;
+      display: inline-block;
+      vertical-align: middle;
+      width: 42px;
+      height: 42px;
+    }
+    span.buttonText {
+      display: inline-block;
+      vertical-align: middle;
+      padding-left: 42px;
+      padding-right: 42px;
+      font-size: 14px;
+      font-weight: bold;
+      /* Use the Roboto font that is loaded in the <head> */
+      font-family: 'Roboto', sans-serif;
+    }
+   </style> -->
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      .traceInfo{
+         color: black;
+      }
+      .myButtons{
+        background-color: #00274C;
+        font-size: 1vw;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 4px;
+        margin-left: 28px;
+        font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+      }
+      .myButtons:hover {
+        background-color: #FFCB05;
+        transition: 0.1s;
+        cursor: pointer;
+      }
+      /* Use a media query to add a breakpoint at 800px: */
+      @media screen and (max-width: 1000px) {
+         .myButtons {
+            margin-bottom: 6px;            
+            font-size: 4dvw; /* The width is 100%, when the viewport is 800px or smaller */
+         }
+      }
+
+   </style>
+   <script>
+  "use strict";
+   let map;
+   let data;
+   let setSpeed=91;
+   let freq=60;
+
+   let allTracePos=[];
+   let allTraceTime=[];
+   
+   const month = ["Jan","Feb","Mar","Apl","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+   let markers= [];
+   let traceMarkers=[];
+   let markerDates = [];
+   let infowindows=[];
+   let traceinfowindows=[];
+   let astrumMarker;
+   let astrumInfoWindow;
+   const route_kml_url = 'https://telemetry.worldsolarchallenge.org/wscearth/route.kml';
+
+   const ausCenter = {lat: -25.363, lng: 131.044};
+
+   const startPos={lat: -12.4637, lng: 130.8444};
+   const katherinePos={lat: -14.4520, lng: 132.2699};
+   const dunmarraPos={lat: -16.679973, lng: 133.412624};
+   const tennantCreekPos={lat: -19.6495, lng: 134.1910};
+   const barrowCreekPos={lat: -21.3799, lng: 133.9756};
+   const aliceSpringsPos={lat: -23.6980, lng:133.8807};
+   const kulgeraPos={lat: -25.8436, lng: 133.2879};
+   const cooberPedyPos={lat: -29.0135, lng: 134.7544};
+   const glendamboPos={lat: -30.9677, lng: 135.7513};
+   const portAugustaPos={lat:-32.4936, lng: 137.7743};
+   const endPos={lat: -34.928497, lng: 138.600739};
+   
+   const origins=[];
+   const destinations = [];
+
+   gapi.load('auth2',function(){gapi.auth2.init();});
+
+   //animates the newest marker every t milliseconds
+   async function animate(t){
+      while(allTraceData.length<1){await sleep(100);}
+      console.log("start animate");
+      var elem = astrumMarker;
+      var cur=allTraceData.length-1;
+      var curPos=processTxtRow(allTraceData[cur]);
+      console.log("curpos= "+curPos + " cur="+cur+" str="+allTraceData[cur]);
+      clearInterval(id);
+      var id=setInterval(frame, t);
+      function frame(){
+         console.log("framing");
+         if(elem.getPosition().lat<=curPos.lat){
+            console.log(elem.getPosition()+" <= "+ curPos.lat);
+            clearInterval(id);
+            var newPos=allTraceData[allTraceData.length-1];
+            console.log("idk= "+newPos);
+            astrumMarker.setPosition(newPos);
+            console.log("done moving to "+curPos.lat);
+         }
+         else if(cur<=allTraceData.length-1){
+            //lat
+            if(allTraceData[traceMarkers.length-1].getPosition.lat > curLat)curPos.lat+=0.001;
+            else if(allTraceData[traceMarkers.length-1].getPosition.lat < curLat)curPos.lat-=0.001;
+            console.log("updated lat");
+            //lng
+            if(allTraceData[traceMarkers.length-1].getPosition.lat > curLat)curPos.lng+=0.001;
+            else if(allTraceData[traceMarkers.length-1].getPosition.lat < curLat)curLng-=0.001;
+            console.log("updated lng");
+            //set position
+            elem.setPosition(curPos);
+            console.log("moving: "+ elem.getPosition());
+         }
+      }
+   }
+
+   //Gets position by fetching github .txt file
+   async function getAstrumPos(){
+      //getText("./location.txt").then(
+      getText("./location.txt").then(
+         function(value){
+            const str=processTxtPara(value);
+            const timeStr=processTxtParaTime(value);
+            for(let i=0;i<str.length;++i){
+               if(str[i] && timeStr[i]){
+                  allTracePos.push(str[i]);
+                  allTraceTime.push(timeStr[i]);
+                  var sth=timeStr[i].split(":");
+                  sth=sth[2];
+                  if(i==str.length-1)astrumMarker.setPosition(str[i], timeStr[i]);
+                  if(Number(sth%freq==0)){
+                     addTraceMarker(str[i], timeStr[i]);
+                     traceMarkers[traceMarkers.length-1].setMap(null);
+                     if(getClosestCPName()=="Katherine" || getClosestCPName()=="Dunmarra"){
+                        changeNewestMarkerInfoWindow(document.getElementById("ins-1").innerHTML);
+                     }
+                     else if(getClosestCPName()=="Tennant Creek" || getClosestCPName()=="Barrow Creek")
+                        changeNewestMarkerInfoWindow(document.getElementById("ins-2").innerHTML);
+                  }
+               }
+            }
+            astrumMarker.setPosition(traceMarkers[traceMarkers.length-1]);
+            return("DONE");
+         },
+         function(error){
+            return error;
+            alert("sth wrong w txt file!~");
+
+         }
+      );
+      return("DONE");
+      //str=str.split(",");
+   }
+
+   //Creates the initial control stops markers
+   function setInitMarkers(map){
+      astrumMarker = new google.maps.Marker({
+         position: startPos,
+         icon: unifyInitIcon("https://raw.githubusercontent.com/ncleong/AstrumLiveTracker/main/assets/wsc-animation-astrum-2.png"),
+         title: "Astrum",
+         map,
+      })
+      /*
+      const astrumIcon="https://imgur.com/a/W7pXawQ", 
+            wscIcon="https://worldsolarchallenge.org/skin/2023/images/logo.svg", 
+            endPointIcon="https://static.vecteezy.com/system/resources/previews/009/342/320/original/racing-flag-clipart-design-illustration-free-png.png";
+      */
+      const startPointMarker = new google.maps.Marker({
+            position: startPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "startingPoint",
+            map,
+      })
+      markers.push(startPointMarker);
+      const katherineMarker = new google.maps.Marker({
+            position: katherinePos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "katherine",
+            map,
+      })
+      markers.push(katherineMarker);
+      const dunmarraMarker = new google.maps.Marker({
+            position: dunmarraPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "dunmarra",
+            map,
+      })
+      markers.push(dunmarraMarker);
+      const tennantCreekMarker = new google.maps.Marker({
+            position: tennantCreekPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "tennantCreek",
+            map,
+      })
+      markers.push(tennantCreekMarker);
+      const barrowCreekMarker = new google.maps.Marker({
+            position: barrowCreekPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "barrowCreekMarker",
+            map,
+      })
+      markers.push(barrowCreekMarker);
+      const aliceSpringMarker = new google.maps.Marker({
+            position: aliceSpringsPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "aliceSpring",
+            map,
+      })
+      markers.push(aliceSpringMarker);
+      const kulgeraMarker = new google.maps.Marker({
+            position: kulgeraPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "kulgera",
+            map,
+      })
+      markers.push(kulgeraMarker);
+      const cooberPedyMarker = new google.maps.Marker({
+            position: cooberPedyPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "cooberPedy",
+            map,
+      })
+      markers.push(cooberPedyMarker);
+      const glendamboMarker = new google.maps.Marker({
+            position: glendamboPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "glendambo",
+            map,
+      })
+      markers.push(glendamboMarker);
+      const portAugustaMarker = new google.maps.Marker({
+            position: portAugustaPos,
+            icon: unifyInitIcon("https://worldsolarchallenge.org/skin/2023/images/logo.svg"),
+            title: "portAugusta",
+            map,
+      })
+      markers.push(portAugustaMarker);
+      const endPointMarker = new google.maps.Marker({
+            position: endPos,
+            icon: unifyInitIcon("https://static.vecteezy.com/system/resources/previews/009/342/320/original/racing-flag-clipart-design-illustration-free-png.png"),
+            title: "endingPoint",
+            map,
+      })
+      markers.push(endPointMarker);
+   }
+
+   function toContentStr(imgLoc, insLink){
+      imgLoc="https://raw.githubusercontent.com/ncleong/AstrumLiveTracker/main/assets/"+imgLoc;
+      return '<a href="'+insLink+'">'+'<img src="'+imgLoc+'" style="max-height:490px; max_width:300px;"></a>';
+   }
+
+   //creastes control stop names and instagram content string for the info windows for control stops
+   function setInitInfoWindow(){
+      var insString=document.getElementById("ins").innerHTML;
+      let contentString=["Darwin\n","Katherine\n", "Dunmarra\n", "Tennant Creek\n","Barrow Creek\n", "Alice Springs\n", "Erldunda\n", "Coober Pedy", "Glendambo", "Port Augusta", "Adelaide"];
+      for(let i =0; i<contentString.length;++i){
+         switch(contentString[i]){
+               case "Katherine\n":
+                  insString=toContentStr("Katherine.png", "https://www.instagram.com/stories/umsolarcarteam/3219508080396258342/?next=%2Fumsolarcarteam%2F&hl=en");
+                  break;
+               case "Dunmarra\n":
+                  insString=toContentStr("Dunmarra.png", "https://www.instagram.com/stories/umsolarcarteam/3218921012951588398/?next=%2Fumsolarcarteam%2F&hl=en");
+                  break;
+               case "Tennant Creek\n":
+                  insString=toContentStr("TennantCreek.jpg","");
+                  break;
+               case "BarrowCreek\n":
+                  insString=toContentStr("BarrowCreek.PNG","https://www.instagram.com/stories/umsolarcarteam/3219733012078206118/?hl=en");
+                  break;
+               case "Alice Springs\n":
+                  insString=toContentStr("AliceSprings.jpg","https://www.instagram.com/stories/umsolarcarteam/3220309693117745170/?hl=en");
+                  break;
+               case "Erldunda\n":
+                  insString=toContentStr("Erldunda.jpg","https://www.instagram.com/stories/umsolarcarteam/3220389287308918943/?hl=en");
+                  break;
+         }
+         const infowondow= new google.maps.InfoWindow({
+            content: '<h4 style="color:black">'+contentString[i]+'</h4>'+insString,
+         });
+         infowindows.push(infowondow);
+      }
+   }
+   //Creastes trace markers to the traceMarkers[]
+   function addTraceMarker(position, Label){
+      //const contentString=document.getElementsByTagName('div')[68].innerHTML;
+      const contentString=document.getElementById("ins").innerHTML;
+      const infowindow = new google.maps.InfoWindow({
+            content: contentString,
+            //ariaLabel: label,
+      });
+      const marker=new google.maps.Marker({
+            position: position,
+            label: Label,
+            map,
+      });
+      marker.addListener("click", () => {
+            infowindow.open({
+            anchor: marker,
+            map,
+            });
+      });
+      traceMarkers.push(marker);
+      traceinfowindows.push(infowindow);
+   }
+   //**HELPER FUNCTIONS**//
+   //helper function
+   async function getText(file) {
+      let myObject = await fetch(file);
+      let myText = await myObject.text();
+      return myText;
+   }
+   //helper function
+   function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+   }
+   //helper function
+   function getNumberFromString(str){
+      str=str.split(" ");
+      return str[0];
+   }
+   //processes a distance string into correct format (eg KM)
+   function processDist(str){
+      let str2="";
+      for(let i=0;i<str.length;++i){
+         if(48<=str.codePointAt(i)&& str.codePointAt(i)<=57)str2+=str[i];
+         else 
+            break;
+      }
+      str2+=" km";
+      return str2;
+   }
+   //helper function to make the icons in same size
+   function unifyInitIcon(URL){
+      const thing2={
+            url: URL,
+            scaledSize: new google.maps.Size(80, 42),
+            origin: new google.maps.Point(0, 0),
+            anchor: new google.maps.Point(40, 25),
+      }
+      return thing2;
+   }
+   async function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 5,
+            center: ausCenter,
+            fullscreenControl: false,
+            zoomControl: true,
+            streetViewControl: false
+      });
+      await setInitMarkers(map);        
+      await setInitInfoWindow();
+
+      ///////BACKDOOR FUNC/////// 
+      /*
+      map.addListener("click", (event) => {
+            addTraceMarker(event.latLng, getDateInString()+"-"+getTimeInString());
+      });*/
+      ///////TESTING FUNC///////
+      //match infowindows with markers
+      for(let i=0;i<markers.length;i++){
+         markers[i].addListener("click", () => {
+         infowindows[i].open({
+         anchor: markers[i],
+         map,
+         });
+       });
+      }
+      astrumInfoWindow= new google.maps.InfoWindow({
+         content: "Default",
+      });
+      astrumMarker.addListener("click",()=>{
+         astrumInfoWindow.open({
+            anchor: astrumMarker,
+            map,
+         });
+      });
+      getAstrumPos().then(
+         async function(value){
+            getText("./setSpeed.txt").then(
+               function(value){
+                  setSpeed=value;
+               }
+            )
+            while(traceMarkers.length<1){await sleep(1000);}
+            hideTrace();
+            var counter=allTracePos.length-1;
+            while(allTracePos[counter].length+allTraceTime[counter]<33){
+               counter--;
+            }
+            console.log("processed= "+allTracePos[counter] + " time= "+allTraceTime[counter]);
+            addTraceMarker(allTracePos[counter], allTraceTime[counter]);
+            traceMarkers[traceMarkers.length-2].setMap(null);
+            doDist2(traceMarkers[traceMarkers.length-1].getPosition(), getClosestCPPos());
+            //await doDist(traceMarkers[traceMarkers.length-1].getPosition(), getClosestCPPos());
+            //animate(20);//refreshes each animated frame per 20 ms
+         }
+      )
+   }
+   function doDist2(mk1, mk2){
+      var dist = haversine_distance(mk1, mk2);
+      mk2 = getClosestCPPos();
+      data = "Next control stop: "+ getClosestCPName() + '\n';
+      data+=  "Distance left: " + haversine_distance(mk1, mk2) + '\n';
+      data += "time to next control stop: "+ dist/setSpeed*60+ " minutes"+'\n';
+      const d = new Date();
+      var h=d.getHours();
+      var m = d.getMinutes() + Math.floor(dist/setSpeed*60);
+      if(m>60){h+=Math.floor(m/60);m%=60;}
+      data += "ETA to next control stop: "+ month[d.getMonth()] +d.getDate() + " " +h+":"+m+'\n';
+      var sth = new google.maps.LatLng(startPos.lat, startPos.lng);
+      data += "Distance from Darwin: " + haversine_distance(mk1, sth) + '\n';
+      data += "Last updated: "+traceMarkers[traceMarkers.length-1].getLabel();
+   }
+
+   function doDistStr(origin, destination){
+      const service = new google.maps.DistanceMatrixService();
+      // build request
+      console.log(traceMarkers.length);
+      const request = {
+         origins: [origin],
+         destinations: [destination],
+         travelMode: google.maps.TravelMode.DRIVING,
+         unitSystem: google.maps.UnitSystem.METRIC,
+         avoidHighways: false,
+         avoidTolls: false,
+      }
+      // get distance matrix response
+      service.getDistanceMatrix(request).then((response) => {
+         console.log(response);
+         if(response.rows[0].elements[0].status=='NOT_FOUND'){
+            changeNewestMarkerInfoWindow("dist not found! potentially incorrect location");
+         }
+         else{
+            var dist=processDist(response.rows[0].elements[0].distance.text);
+            data=getClosestCPName() + ", Distance left: "+dist +
+               ", ETA: "+ getNumberFromString(dist)/80 + " hours";
+            return data;
+         } 
+      });
+   }
+   //updates newest loc, calculatets distance and ETA
+   async function doDist(origin, destination){
+      const service = new google.maps.DistanceMatrixService();
+      // build request
+      console.log(traceMarkers.length);
+      const request = {
+         origins: [origin],
+         destinations: [destination],
+         travelMode: google.maps.TravelMode.DRIVING,
+         unitSystem: google.maps.UnitSystem.METRIC,
+         avoidHighways: false,
+         avoidTolls: false,
+      }
+      // get distance matrix response
+      service.getDistanceMatrix(request).then((response) => {
+         if(response.rows[0].elements[0].status=='NOT_FOUND'){
+            changeNewestMarkerInfoWindow("dist not found! potentially incorrect location");
+         }
+         else{
+            var dist=processDist(response.rows[0].elements[0].distance.text);
+            data=getClosestCPName() + ", Distance left: "+dist +
+               ", ETA: "+ getNumberFromString(dist)/80 + " hours";
+            changeNewestMarkerInfoWindow(data);
+            for(var i=0; i<origins.length;++i){
+               var results=response.rows[i].elements;
+               for (var j = 0; j < results.length; j++) {
+                  var element = results[j];
+                  var distance = element.distance.text;
+                  var duration = element.duration.text;
+                  var from = origins[i];
+                  var to = destinations[j];
+               }
+            }
+            const originList = response.originAddresses;
+            const destinationList = response.destinationAddresses;
+         } 
+      });
+   }
+
+   function changeNewestMarkerInfoWindow(str){
+      traceinfowindows[traceMarkers.length-1].setContent("<p style='color: black'>"+str+"</p>");
+   }
+   
+   function getClosestCPName(){
+      const curLat=traceMarkers[traceMarkers.length-1].getPosition().lat();
+      if(curLat>startPos.lat)alert("Too North!");
+      else if(curLat <= startPos.lat && curLat>katherinePos.lat){return "Katherine";}
+      else if(curLat <= katherinePos.lat && curLat>dunmarraPos.lat){return "Dunmarra";}
+      else if(curLat <= dunmarraPos.lat && curLat>tennantCreekPos.lat){return "Tennant Creek";}
+      else if(curLat <= tennantCreekPos.lat && curLat>barrowCreekPos.lat){return "Barrow Creek";}
+      else if(curLat <= barrowCreekPos.lat && curLat>aliceSpringsPos.lat){return "Alice Springs";}
+      else if(curLat <= aliceSpringsPos.lat && curLat>kulgeraPos.lat){return "Kulgera";}
+      else if(curLat <= kulgeraPos.lat && curLat>cooberPedyPos.lat){return "Coober Pedy";}
+      else if(curLat <= cooberPedyPos.lat && curLat>glendamboPos.lat){return "Glendambo";}
+      else if(curLat <= glendamboPos.lat && curLat>portAugustaPos.lat){return "Port Augusta";}
+      else if(curLat <= endPos.lat){return "Adelaide";}
+      else
+         alert("Too South!");
+   }
+
+   function getClosestCPPos(){
+      switch(getClosestCPName()){
+         case("Katherine"): 
+            var sth = new google.maps.LatLng(katherinePos.lat, katherinePos.lng); 
+            return sth;
+            break;
+         case("Dunmarra"):
+            var sth = new google.maps.LatLng(dunmarraPos.lat, dunmarraPos.lng); 
+            return sth; 
+            break;
+         case("Tennant Creek"): 
+         var sth = new google.maps.LatLng(tennantCreekPos.lat, tennantCreekPos.lng); 
+            return sth;
+            break;
+         case("Barrow Creek"): 
+            var sth = new google.maps.LatLng(barrowCreekPos.lat, barrowCreekPos.lng); 
+            return sth;
+            break;
+         case("Alice Springs"): 
+            var sth = new google.maps.LatLng(aliceSpringsPos.lat, aliceSpringsPos.lng); 
+            return sth;
+            break;
+         case("Kulgera"): 
+            var sth = new google.maps.LatLng(kulgeraPos.lat, kulgeraPos.lng); 
+            return sth;
+            break;
+         case("Coober Pedy"): 
+            var sth = new google.maps.LatLng(cooberPedyPos.lat, cooberPedyPos.lng); 
+            return sth;
+            break;
+         case("Glendambo"): 
+            var sth = new google.maps.LatLng(glendamboPos.lat, glendamboPos.lng); 
+            return sth;
+            break;
+         case("Port Augusta"): 
+            return portAugustaPos; 
+            break;
+         case("Adelaide"): 
+            return endPos; 
+            break;
+         default:
+            return startPos;
+      }
+   }
+
+   function getPosOfNum(num){
+      const str=processTxtPara("./location.txt");
+      //const str=processTxtPara("https://raw.githubusercontent.com/ncleong/AstrumLiveTracker/main/location.txt");
+      if(num=-1)num=str.length;
+      return str[num];
+   }
+
+   function hide(e){
+      document.getElementById(e).hidden=true;
+   }
+
+   function show(e){
+      document.getElementById(e).hidden=false;
+      alert("done showing e");
+   }
+
+   function showTrace(array) {
+      for (let i = 0; i < array.length; i++) {
+            array[i].setMap(map);
+      }
+   }
+   function hideTrace() {
+      for(let i = 0; i<traceMarkers.length -1; ++i){
+            traceMarkers[i].setMap(null);
+      }
+   }
+
+   function hideInitMarker(){
+      for(let i = 0; i<markers.length; ++i){
+            markers[i].setMap(null);
+      }
+   }
+
+   function reCenter(){
+      map.setZoom(5);
+      map.setCenter(ausCenter);
+   }
+
+   function zoomCurrentMarker(){
+      map.setCenter(traceMarkers[traceMarkers.length-1].getPosition());
+      map.setZoom(15);
+   }
+
+   function getDateInString(){
+      var today = new Date();
+      var date = (today.getMonth()+1)+'/'+today.getDate();
+      return date;
+   }   
+
+   function getTimeInString(){
+      var today = new Date(); 
+      var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+      return time;
+   }
+
+   function checkLogIn(loggedIn){
+      infowindow.open();
+      var profile = googleUser.getBasicProfile();
+      console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
+      console.log('Name: ' + profile.getName());
+      console.log('Image URL: ' + profile.getImageUrl());
+      console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
+      alert("info window opened");
+   }
+
+   function processTxtPara(string){
+      string=string.split("\n");
+      let sth=[];
+      for(let i=0;i<string.length;++i){
+         let str=processTxtRow(string[i]);
+         if(str!="")sth.push(str);
+      }
+      return sth;
+   }
+
+   function processTxtRow(string){
+      string=string.split(",");
+      const sth=new google.maps.LatLng(string[0],string[1]);
+      return sth;
+   }
+
+   function processTxtParaTime(string){
+      string=string.split("\n");
+      for(let i=0;i<string.length;++i){
+         const sth= string[i].split(",");
+         string[i]=sth[2];
+      }
+      return string;
+   }
+   function processTxtRowTime(string){
+      for(let i=0;i<string.length;++i){
+         const sth= string[i].split(",");
+         string[i]=sth[2];
+      }
+      return string;
+   }
+   function getFullTimeString(){
+      return getDateInString()+"-"+getTimeInString();
+   }
+
+   function onSignIn(googleUser){
+   if (auth2.isSignedIn.get()) alert("signed In in onSignIn");
+   alert("On sign in!");
+   var profile = googleUser.getBasicProfile();
+   alert("U are signed in"+profile.getName());
+   $("#userName").text=profile.getName();
+   $(".g-signin2").hide();
+   show("userName");
+   hide("g-signin2");
+   alert("done hiding n showing");
+   /*
+   console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
+   console.log('Name: ' + profile.getName());
+   console.log('Image URL: ' + profile.getImageUrl());
+   console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
+   */
+   }
+   function removeTraceMarkers(num){
+   traceMarkers=traceMarkers.splice(0,num);
+   }
+
+   //helper function, straightline dist in btwn markers
+   function haversine_distance(mk1, mk2) {
+      var R = 3958.8; // Radius of the Earth in miles
+      var rlat1 = mk1.lat() * (Math.PI/180); // Convert degrees to radians
+      var rlat2 = mk2.lat() * (Math.PI/180); // Convert degrees to radians
+      var difflat = rlat2-rlat1; // Radian difference (latitudes)
+      var difflon = (mk2.lng()-mk1.lng()) * (Math.PI/180); // Radian difference (longitudes)
+
+      var d = 2 * R * Math.asin(Math.sqrt(Math.sin(difflat/2)*Math.sin(difflat/2)+Math.cos(rlat1)*Math.cos(rlat2)*Math.sin(difflon/2)*Math.sin(difflon/2)));
+      return d;
+    }
+   function showData(){
+      alert(data);
+   }
+   function getDistFromUser(){
+      if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+         };
+         var infowindow = new google.maps.InfoWindow();
+         infowindow.setPosition(pos);
+         var sthh = new google.maps.LatLng(pos.lat, pos.lng);
+         var str= "Your location is here;"+'\n';
+         str+="Dist from blue= "+haversine_distance(sthh, allTracePos[allTracePos.length-1])+'\n';
+         console.log("type = "+typeof sthh+" "+typeof allTracePos[allTracePos.length-1]);
+         str+="Last updated: "+allTraceTime[allTraceTime.length-1];
+         infowindow.setContent(str);
+         map.setCenter(pos);
+         infowindow.open(map);
+         var line = new google.maps.Polyline({path: [position, astrumMarker], map: map})
+        },
+        () => {
+            alert("your browser does not support GeoLocation!");
+        },
+      );
+   } else {
+      // Browser doesn't support Geolocation
+      alert("your browser does not support GeoLocation!");
+    }
+   }
+   </script>
+  </head>
+
+
+   <body>
+      <script src="https://apis.google.com/js/platform.js" async defer></script>
+      <div id="floating-panel">
+         <button class="myButtons" onclick="hideTrace()">Show Only Newest Location</button>
+         <button class="myButtons" onclick="showTrace(traceMarkers)">Show All Locations</button>
+         <button class="myButtons" onclick="hideInitMarker()">Hide Control Stops</button>
+         <button class="myButtons" onclick="showTrace(markers)">Show Control Stops</button>
+         <button class="myButtons" onclick="reCenter()">Re-Center</button>
+         <button class="myButtons" onclick="zoomCurrentMarker()">Zoom to current marker</button>
+         <button class="myButtons" onclick="showData()">Show data</button>
+         <button class="myButtons" onclick="getDistFromUser()">Show Distance of Blue to you</button>
+         <!--
+    <div class="g_id_signin" data-type="standard"></div>
+         <div class="g-signin2" data-onsuccess="onSignIn"></div>
+         <div id="gSignInWrapper">
+            <span class="label">Sign in with:</span>
+            <div id="customBtn" class="customGPlusSignIn">
+              <span class="icon"></span>
+              <span class="buttonText">Google</span> 
+            </div>
+          </div>
+          <div id="name"></div>
+          <script>startApp();</script>
+          -->
+      </div>
+      <div id="map"></div>
+      <div id="ins" hidden="hidden">
+         <blockquote id="instagram-media-0" class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"><div style="padding:16px;"> <a href="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_embed&amp;utm_campaign=loading" style=" background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> <div style=" display: flex; flex-direction: row; align-items: center;"> <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div></div></div><div style="padding: 19% 0;"></div> <div style="display:block; height:50px; margin:0 auto 12px; width:50px;"><svg width="50px" height="50px" viewBox="0 0 60 60" version="1.1" xmlns="https://www.w3.org/2000/svg" xmlns:xlink="https://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-511.000000, -20.000000)" fill="#000000"><g><path d="M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 549.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631"></path></g></g></g></svg></div><div style="padding-top: 8px;"> <div style=" color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">在 Instagram 查看這則貼文</div></div><div style="padding: 12.5% 0;"></div> <div style="display: flex; flex-direction: row; margin-bottom: 14px; align-items: center;"><div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(0px) translateY(7px);"></div> <div style="background-color: #F4F4F4; height: 12.5px; transform: rotate(-45deg) translateX(3px) translateY(1px); width: 12.5px; flex-grow: 0; margin-right: 14px; margin-left: 2px;"></div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(9px) translateY(-18px);"></div></div><div style="margin-left: 8px;"> <div style=" background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 20px; width: 20px;"></div> <div style=" width: 0; height: 0; border-top: 2px solid transparent; border-left: 6px solid #f4f4f4; border-bottom: 2px solid transparent; transform: translateX(16px) translateY(-4px) rotate(30deg)"></div></div><div style="margin-left: auto;"> <div style=" width: 0px; border-top: 8px solid #F4F4F4; border-right: 8px solid transparent; transform: translateY(16px);"></div> <div style=" background-color: #F4F4F4; flex-grow: 0; height: 12px; width: 16px; transform: translateY(-4px);"></div> <div style=" width: 0; height: 0; border-top: 8px solid #F4F4F4; border-left: 8px solid transparent; transform: translateY(-4px) translateX(8px);"></div></div></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center; margin-bottom: 24px;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 224px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 144px;"></div></div></a><p style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; line-height:17px; margin-bottom:0; margin-top:8px; overflow:hidden; padding:8px 0 7px; text-align:center; text-overflow:ellipsis; white-space:nowrap;"><a href="https://www.instagram.com/p/Cus0WYCunUy/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;" target="_blank">University of Michigan Solar Car Team（@umsolarcarteam）分享的貼文</a></p></div></blockquote> <script async src="https://www.instagram.com/embed.js"></script>
+      </div>
+      <div id="ins-1" hidden="hidden">
+         <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="https://www.instagram.com/p/Cys1YOGsTWd/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"><div style="padding:16px;"> <a href="https://www.instagram.com/p/Cys1YOGsTWd/?utm_source=ig_embed&amp;utm_campaign=loading" style=" background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> <div style=" display: flex; flex-direction: row; align-items: center;"> <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div></div></div><div style="padding: 19% 0;"></div> <div style="display:block; height:50px; margin:0 auto 12px; width:50px;"><svg width="50px" height="50px" viewBox="0 0 60 60" version="1.1" xmlns="https://www.w3.org/2000/svg" xmlns:xlink="https://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-511.000000, -20.000000)" fill="#000000"><g><path d="M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 549.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631"></path></g></g></g></svg></div><div style="padding-top: 8px;"> <div style=" color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">View this post on Instagram</div></div><div style="padding: 12.5% 0;"></div> <div style="display: flex; flex-direction: row; margin-bottom: 14px; align-items: center;"><div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(0px) translateY(7px);"></div> <div style="background-color: #F4F4F4; height: 12.5px; transform: rotate(-45deg) translateX(3px) translateY(1px); width: 12.5px; flex-grow: 0; margin-right: 14px; margin-left: 2px;"></div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(9px) translateY(-18px);"></div></div><div style="margin-left: 8px;"> <div style=" background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 20px; width: 20px;"></div> <div style=" width: 0; height: 0; border-top: 2px solid transparent; border-left: 6px solid #f4f4f4; border-bottom: 2px solid transparent; transform: translateX(16px) translateY(-4px) rotate(30deg)"></div></div><div style="margin-left: auto;"> <div style=" width: 0px; border-top: 8px solid #F4F4F4; border-right: 8px solid transparent; transform: translateY(16px);"></div> <div style=" background-color: #F4F4F4; flex-grow: 0; height: 12px; width: 16px; transform: translateY(-4px);"></div> <div style=" width: 0; height: 0; border-top: 8px solid #F4F4F4; border-left: 8px solid transparent; transform: translateY(-4px) translateX(8px);"></div></div></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center; margin-bottom: 24px;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 224px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 144px;"></div></div></a><p style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; line-height:17px; margin-bottom:0; margin-top:8px; overflow:hidden; padding:8px 0 7px; text-align:center; text-overflow:ellipsis; white-space:nowrap;"><a href="https://www.instagram.com/p/Cys1YOGsTWd/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;" target="_blank">A post shared by University of Michigan Solar Car Team (@umsolarcarteam)</a></p></div></blockquote> <script async src="//www.instagram.com/embed.js"></script>
+      </div>
+      <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+   </body>
+</html>

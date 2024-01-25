@@ -1,0 +1,10 @@
+python3 backend0init.py
+while :
+do
+   echo "printing"
+   python3 backend0.py
+   git add .
+   git commit -m "testing from terminal"
+   git push
+   sleep 15s
+done

@@ -1,0 +1,10 @@
+while (1)
+{
+    cd AstrumLiveTracker
+   git add .
+   git commit -m "updating location dat"
+   git push
+   cd ..
+    python3 mqtt.py
+   timeout /t 15
+}

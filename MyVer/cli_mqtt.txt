@@ -1,0 +1,10 @@
+python3 mqtt.py
+while :
+do
+   cd AstrumLiveTracker
+   git add .
+   git commit -m "updating location dat"
+   git push
+   sleep 15s
+   cd ..
+done
